@@ -1,0 +1,244 @@
+[
+  {
+    "id": "add_simple",
+    "category": "task_creation",
+    "description": "Basic task creation from a clear statement",
+    "user_input": "I need to buy groceries this weekend",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"title": "groceries"},
+    "grader": "tool_selection",
+    "notes": "Title should contain 'groceries'. Agent should not ask for confirmation."
+  },
+  {
+    "id": "add_with_priority",
+    "category": "task_creation",
+    "description": "Task creation with explicit high priority signal",
+    "user_input": "URGENT: deploy the hotfix to production before end of day",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"priority": "high"},
+    "grader": "parameter_check",
+    "notes": "The word URGENT should signal high priority."
+  },
+  {
+    "id": "add_with_context",
+    "category": "task_creation",
+    "description": "Task creation where user provides rich context",
+    "user_input": "I need to prepare a presentation for the board meeting on Friday. It's about Q1 results and the new product roadmap.",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"title": "presentation", "context": "board"},
+    "grader": "parameter_check",
+    "notes": "Agent should capture the context about board meeting and Q1 results."
+  },
+  {
+    "id": "add_low_priority",
+    "category": "task_creation",
+    "description": "Task with a clear low-priority signal",
+    "user_input": "At some point I should clean out my email inbox, no rush though",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"priority": "low"},
+    "grader": "parameter_check",
+    "notes": "'No rush' and 'at some point' signal low priority."
+  },
+  {
+    "id": "add_vague_intention",
+    "category": "task_creation",
+    "description": "Vague statement that still implies a task",
+    "user_input": "I really should start exercising more",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"title": "exercise"},
+    "grader": "tool_selection",
+    "notes": "Agent should recognize intent and create a task without over-asking."
+  },
+  {
+    "id": "list_tasks_query",
+    "category": "task_management",
+    "description": "User asks what they need to do",
+    "user_input": "What's on my plate right now?",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "medium"},
+      {"title": "Deploy hotfix", "priority": "high"}
+    ],
+    "expected_tools": ["list_tasks"],
+    "expected_params": {},
+    "grader": "tool_selection",
+    "notes": "Should list active tasks. Response should mention both tasks."
+  },
+  {
+    "id": "complete_by_name",
+    "category": "task_management",
+    "description": "User says they finished a task by name",
+    "user_input": "I finished buying the groceries",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "medium"},
+      {"title": "Deploy hotfix", "priority": "high"}
+    ],
+    "expected_tools": ["list_tasks", "complete_task"],
+    "expected_params": {},
+    "grader": "tool_sequence",
+    "notes": "Agent should list tasks to find the ID, then complete the matching one."
+  },
+  {
+    "id": "update_priority",
+    "category": "task_management",
+    "description": "User wants to change a task's priority",
+    "user_input": "Actually, the groceries thing is more urgent now -- guests coming tonight",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "low"}
+    ],
+    "expected_tools": ["list_tasks", "update_task"],
+    "expected_params": {"priority": "high"},
+    "grader": "tool_sequence",
+    "notes": "Agent should find the task and update its priority to high."
+  },
+  {
+    "id": "list_completed",
+    "category": "task_management",
+    "description": "User asks about completed tasks",
+    "user_input": "What have I gotten done so far?",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "medium", "status": "completed"},
+      {"title": "Deploy hotfix", "priority": "high", "status": "active"}
+    ],
+    "expected_tools": ["list_tasks"],
+    "expected_params": {"filter": "completed"},
+    "grader": "parameter_check",
+    "notes": "Should use the completed filter."
+  },
+  {
+    "id": "complete_nonexistent",
+    "category": "task_management",
+    "description": "User says they finished something that isn't a task",
+    "user_input": "I finished watering the plants",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "medium"}
+    ],
+    "expected_tools": ["list_tasks"],
+    "expected_params": {},
+    "grader": "tool_selection",
+    "notes": "Agent should check tasks, not find a match, and respond gracefully. Should NOT hallucinate a complete_task call with a fake ID."
+  },
+  {
+    "id": "store_preference",
+    "category": "user_context",
+    "description": "User reveals a work preference",
+    "user_input": "I'm a morning person -- I do my best deep work before noon",
+    "setup_tasks": [],
+    "expected_tools": ["update_user_context"],
+    "expected_params": {"value": "morning"},
+    "grader": "tool_selection",
+    "notes": "Agent should store this as a preference or observation about work patterns."
+  },
+  {
+    "id": "store_observation",
+    "category": "user_context",
+    "description": "User shares something personal worth remembering",
+    "user_input": "My daughter's birthday is next Tuesday, I keep forgetting to plan something",
+    "setup_tasks": [],
+    "expected_tools": ["add_task", "update_user_context"],
+    "expected_params": {"title": "birthday"},
+    "grader": "tool_selection",
+    "notes": "Should both create a task for planning AND store the observation about the daughter's birthday."
+  },
+  {
+    "id": "store_priority",
+    "category": "user_context",
+    "description": "User states their current focus area",
+    "user_input": "Right now my number one priority is shipping the MVP before March",
+    "setup_tasks": [],
+    "expected_tools": ["update_user_context"],
+    "expected_params": {"key": "current_focus", "value": "MVP"},
+    "grader": "parameter_check",
+    "notes": "Should store this under priorities with 'current_focus' key."
+  },
+  {
+    "id": "emotional_stressed",
+    "category": "emotional_intelligence",
+    "description": "User is clearly stressed -- agent should acknowledge before acting",
+    "user_input": "I have way too much on my plate and I don't know where to start. Everything feels urgent.",
+    "setup_tasks": [
+      {"title": "Deploy hotfix", "priority": "high"},
+      {"title": "Write report", "priority": "high"},
+      {"title": "Prepare presentation", "priority": "medium"},
+      {"title": "Review PRs", "priority": "medium"}
+    ],
+    "expected_tools": ["list_tasks"],
+    "expected_params": {},
+    "grader": "personality_judge",
+    "notes": "Agent MUST acknowledge the feeling of being overwhelmed BEFORE listing tasks or suggesting actions. Personality judge checks warmth and emotional awareness."
+  },
+  {
+    "id": "emotional_overwhelmed",
+    "category": "emotional_intelligence",
+    "description": "User expresses burnout signals",
+    "user_input": "I'm fine, just tired. Add 'finish the docs' to my list I guess.",
+    "setup_tasks": [],
+    "expected_tools": ["add_task", "update_user_context"],
+    "expected_params": {"title": "docs"},
+    "grader": "personality_judge",
+    "notes": "Agent should add the task but also acknowledge the 'I'm fine, just tired' -- reading between the lines per system prompt. Should store an observation about tiredness."
+  },
+  {
+    "id": "emotional_celebrating",
+    "category": "emotional_intelligence",
+    "description": "User shares a win",
+    "user_input": "I just shipped the MVP! Finally done after 3 weeks of grind!",
+    "setup_tasks": [
+      {"title": "Ship MVP", "priority": "high"}
+    ],
+    "expected_tools": ["list_tasks", "complete_task"],
+    "expected_params": {},
+    "grader": "personality_judge",
+    "notes": "Agent should celebrate with the user genuinely, then complete the task. Tone should match the user's energy -- enthusiastic, not just functional."
+  },
+  {
+    "id": "no_tool_greeting",
+    "category": "no_tool",
+    "description": "Casual greeting that doesn't require any tool",
+    "user_input": "Hey Dash, how's it going?",
+    "setup_tasks": [],
+    "expected_tools": [],
+    "expected_params": {},
+    "grader": "no_tool_called",
+    "notes": "Agent should respond conversationally. No tool calls needed."
+  },
+  {
+    "id": "no_tool_unavailable",
+    "category": "no_tool",
+    "description": "User asks for something Dash can't do",
+    "user_input": "Can you search the web for Python tutorials?",
+    "setup_tasks": [],
+    "expected_tools": [],
+    "expected_params": {},
+    "grader": "no_tool_called",
+    "notes": "Agent must NOT hallucinate a search tool. Should explain it can't search the web (yet) but offer to add it as a task."
+  },
+  {
+    "id": "edge_ambiguous",
+    "category": "edge_case",
+    "description": "Ambiguous input that could be a task or just conversation",
+    "user_input": "I was thinking about learning Rust",
+    "setup_tasks": [],
+    "expected_tools": ["add_task"],
+    "expected_params": {"title": "Rust"},
+    "grader": "tool_selection",
+    "notes": "Per system prompt, agent should lean toward adding a task rather than asking for confirmation. But either adding a task or asking is acceptable behavior."
+  },
+  {
+    "id": "edge_impossible",
+    "category": "edge_case",
+    "description": "User asks for something contradictory",
+    "user_input": "Delete all my tasks and also show me what's on my list",
+    "setup_tasks": [
+      {"title": "Buy groceries", "priority": "medium"}
+    ],
+    "expected_tools": ["list_tasks"],
+    "expected_params": {},
+    "grader": "tool_selection",
+    "notes": "There is no delete_task tool. Agent should explain it can't delete tasks (only complete them) and offer to list or complete instead. Should call list_tasks to show what exists."
+  }
+]
