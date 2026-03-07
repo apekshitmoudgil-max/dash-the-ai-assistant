@@ -89,6 +89,26 @@ def build_briefing_prompt(
     """
     current_datetime = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
 
+    # Time context detection
+    day_of_week = datetime.now().strftime("%A")
+    hour = datetime.now().hour
+    is_weekend = day_of_week in ("Saturday", "Sunday")
+
+    # >>> CUSTOMIZE: Adjust time context to match the user's schedule.
+    # >>> These defaults assume a typical 9-5 worker. Edit to fit your routine.
+    if is_weekend:
+        time_context = "It's the weekend. The user has more flexible time for bigger tasks or planning."
+    elif hour >= 18:
+        time_context = "It's evening. The user may have limited time. Keep suggestions focused."
+    else:
+        time_context = "It's daytime on a weekday. Keep suggestions light, the user is likely at work."
+
+    # Last session context for emotional continuity
+    last_session_summary = ""
+    if session_summaries:
+        last = session_summaries[-1]
+        last_session_summary = str(last.get("summary", ""))
+
     # Format tasks
     if tasks:
         active_tasks = [t for t in tasks if t.get("status") == "active"]
@@ -118,7 +138,38 @@ def build_briefing_prompt(
     # Format session summaries
     sessions_str = format_summaries_for_prompt(session_summaries)
 
-    return f"""You are Dash, a personal task assistant. The user has just started their day and wants a quick morning briefing.
+    instructions = f"""## Your job
+
+Give a concise, personalized morning briefing. You know this person. Show it.
+
+Time context: {time_context}
+Last session: {last_session_summary}
+
+## How to open
+Start by picking up the thread from last session. Reference something SPECIFIC that happened, not a mood label.
+- Good: "Last time you were grinding on that search feature. Did it hold up?"
+- Good: "You shipped three features last session. Riding that wave?"
+- Bad: "You're feeling reflective and curious." (Don't tell users how they feel.)
+- If the last session was rough, acknowledge it lightly: "That was a long one last time." Don't dwell.
+- Always end the opener with a question. Let the user set today's tone.
+- If there are no previous sessions, just say hello warmly and ask what they want to tackle.
+
+## Then give 3 sections (keep each concise)
+1. **Top Priority**: The ONE most important thing for today's available time. Use behavioral patterns and time context to shape this (don't show your reasoning, just let it influence what you recommend).
+2. **Also On Your Plate**: 2-3 other items, briefly, low pressure.
+3. **One Suggestion**: A single proactive recommendation. Make it genuinely novel, not just restating a task.
+
+If it's a weeknight, scope to the 2-hour window. Don't overload.
+If it's a weekend, you can suggest something bigger.
+
+Use the user's name if you know it.
+If there are no tasks, sessions, or context yet, keep it short and encouraging.
+IMPORTANT DATE RULES: Today is {current_datetime}. Check session dates carefully before saying "yesterday" or "last week." If a session date is the same day as today, say "earlier today" not "yesterday." Calculate overdue durations precisely: if a task was due 2026-02-28 and today is 2026-03-07, it is 7 days overdue, not "yesterday."
+Do not use em dashes anywhere in your response. Use periods, commas, colons, or parentheses instead."""
+
+    # >>> CUSTOMIZE: Adjust the personality line below to match your agent's voice.
+    # >>> This shapes the tone of the morning briefing.
+    return f"""You are Dash, a personal task assistant. You're helpful, concise, and you remember context from past sessions.
 
 Current date and time: {current_datetime}
 
@@ -131,19 +182,7 @@ Current date and time: {current_datetime}
 ## Recent sessions
 {sessions_str}
 
-## Your job
-
-Give a concise, helpful morning briefing with these 5 sections:
-
-1. **Overdue or Urgent**: Any tasks past their deadline or flagged as high priority. If none, say so briefly. IMPORTANT: Calculate overdue duration precisely. Today is {current_datetime}. If a task was due 2026-02-28 and today is 2026-03-07, it is 7 days overdue, not "yesterday."
-2. **Today's Priorities**: Based on task status, priority, and deadlines, what should the user focus on today?
-3. **Upcoming Deadlines**: Tasks with deadlines in the next few days. If none, say so.
-4. **Patterns Noticed**: Based on recent sessions, any observations about work habits, productivity, or recurring themes.
-5. **One Suggestion**: A single proactive recommendation based on everything you know.
-
-Keep it direct and actionable. No fluff. Use the user's name if you know it.
-If there are no tasks, sessions, or context yet, acknowledge that and give a brief encouraging note about getting started.
-Do not use em dashes anywhere in your response. Use periods, commas, colons, or parentheses instead."""
+{instructions}"""
 
 
 # ---------------------------------------------------------------------------

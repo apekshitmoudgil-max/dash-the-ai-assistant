@@ -4,7 +4,7 @@
 An agentic personal assistant that turns scattered intentions into focused action. Not a to-do app with AI -- an agent that understands your priorities, patterns, and goals, and uses that understanding to be proactively helpful.
 
 ## Current Version
-**v0.3** -- Web search, web fetch, and morning briefing.
+**v0.4** -- Pattern synthesis, search_memory, adaptive briefing, output style tuning.
 
 ## Tech Stack
 | Component | Technology |
@@ -43,13 +43,15 @@ dash/
 ├── src/
 │   ├── agent.py            # Main agent loop (REPL + streaming)
 │   ├── config.py           # Configuration + system prompt template
-│   ├── tools.py            # 8 tools the agent can call
+│   ├── tools.py            # 9 tools the agent can call
 │   ├── web_tools.py        # Web search (Tavily) + web fetch (trafilatura)
-│   ├── proactive.py        # Morning briefing entry point
+│   ├── search_memory.py    # Keyword search over archival memory
+│   ├── pattern_synthesis.py # Behavioral pattern inference at session end
+│   ├── proactive.py        # Adaptive morning briefing
 │   ├── memory.py           # JSON persistence + observation pruning
 │   ├── session_memory.py   # Cross-session summaries
 │   └── context_manager.py  # Conversation window management
-├── tests/                  # 92 tests
+├── tests/                  # 144 tests
 ├── docs/
 │   └── architecture.md     # System design documentation
 ├── requirements.txt

@@ -1,5 +1,6 @@
 """Tests for src/proactive.py: morning briefing prompt builder."""
 
+import datetime as dt
 from datetime import datetime
 from unittest.mock import patch
 
@@ -108,3 +109,68 @@ class TestBuildBriefingPrompt:
         assert "No previous sessions yet." in result
         # Should still contain the briefing instructions
         assert "morning briefing" in result
+
+
+class TestBuildBriefingPromptAdaptive:
+    """Tests for v0.4 adaptive briefing features."""
+
+    def test_includes_time_context_in_instructions(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "Time context:" in result
+
+    def test_weekend_detection(self):
+        # March 8, 2026 is a Sunday
+        mock_now = dt.datetime(2026, 3, 8, 10, 0, 0)
+        with patch("src.proactive.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_now
+            result = build_briefing_prompt([], {}, [])
+            assert "weekend" in result.lower()
+
+    def test_weeknight_evening_detection(self):
+        # March 9, 2026 is a Monday, 9 PM
+        mock_now = dt.datetime(2026, 3, 9, 21, 0, 0)
+        with patch("src.proactive.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_now
+            result = build_briefing_prompt([], {}, [])
+            assert "weeknight" in result.lower() or "evening" in result.lower()
+
+    def test_weekday_daytime_detection(self):
+        # March 9, 2026 is a Monday, 10 AM
+        mock_now = dt.datetime(2026, 3, 9, 10, 0, 0)
+        with patch("src.proactive.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_now
+            result = build_briefing_prompt([], {}, [])
+            assert "weekday" in result.lower() or "daytime" in result.lower()
+
+    def test_three_sections_present(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "Top Priority" in result
+        assert "Also On Your Plate" in result
+        assert "One Suggestion" in result
+
+    def test_no_quick_checkin_section(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "Quick Check-in" not in result
+
+    def test_no_pattern_insight_section(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "Pattern Insight" not in result
+
+    def test_no_mood_label_surfaced(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "Recent mood:" not in result
+
+    def test_last_session_referenced(self):
+        summaries = [
+            {"date": "2026-03-07", "summary": "Built the search memory feature", "mood": "focused"},
+        ]
+        result = build_briefing_prompt([], {}, summaries)
+        assert "Built the search memory feature" in result
+
+    def test_emotional_continuity_instructions(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "pick up the thread" in result.lower() or "last session" in result.lower()
+
+    def test_warm_personality_in_prompt(self):
+        result = build_briefing_prompt([], {}, [])
+        assert "remember" in result.lower() or "friend" in result.lower()

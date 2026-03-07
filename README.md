@@ -12,8 +12,10 @@ This is also a learning project. Instead of using LangChain or similar framework
 
 ## What It Does
 
-- **8 tools** the agent calls autonomously: task management, user context learning, web search, and URL content extraction
-- **Morning briefing** streams a daily summary of priorities, overdue items, and patterns when you start the agent
+- **9 tools** the agent calls autonomously: task management, user context learning, web search, URL content extraction, and memory search
+- **Morning briefing** streams a daily summary of priorities, overdue items, and one suggestion when you start the agent
+- **Pattern synthesis** infers behavioral patterns at session end (work habits, energy, motivation) and uses them to personalize future responses
+- **Memory search** lets the agent search its own session logs and archived observations when you ask about past conversations
 - **3-tier memory** (core / working / archival) so the agent remembers across sessions
 - **Session summaries** auto-generated when you quit, loaded into the next conversation
 - **Observation pruning** caps stored observations at 30, archiving older ones
@@ -51,8 +53,8 @@ Why this model? Inspired by [Letta's architecture](https://docs.letta.com/). The
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/apekshitmoudgil-max/dash-agent.git
-cd dash-agent
+git clone https://github.com/apekshitmoudgil-max/dash-the-ai-assistant.git
+cd dash-the-ai-assistant
 pip install -r requirements.txt
 
 # 2. Add your API keys
@@ -80,10 +82,20 @@ The template placeholders (`{user_context}`, `{active_tasks}`, `{recent_sessions
 ## Tests
 
 ```bash
+# Unit tests (code correctness)
 python3 -m pytest tests/ -v
+
+# Eval runner (LLM behavior testing -- requires your own eval_sessions.json)
+python3 -m tests.eval_runner
 ```
 
-92 tests covering tool execution, web search/fetch, memory operations, observation pruning, session summaries, conversation window management, and morning briefing prompt construction.
+144 unit tests covering tool execution, web search/fetch, memory operations, observation pruning, session summaries, conversation window management, pattern synthesis, memory search, and morning briefing.
+
+### Evaluating Agent Behavior
+
+Unit tests verify code works. Evals verify the **agent** works: does it call the right tools, respond with the right tone, and maintain context?
+
+The eval runner (`tests/eval_runner.py`) executes multi-turn sessions against real Haiku in an isolated data directory, scores tool accuracy, and generates a markdown report. See [tests/EVAL_GUIDE.md](tests/EVAL_GUIDE.md) for how to create your golden dataset and run evals.
 
 ## Design Decisions (and Why)
 
@@ -95,7 +107,7 @@ Every decision here was made deliberately. Full ADRs are in [docs/decisions/](do
 | **Raw API loop** over LangChain/LangGraph | Maximum learning value. Frameworks abstract away exactly the parts I wanted to understand. The full loop is ~200 lines of code. | LangChain, LangGraph, CrewAI |
 | **Local JSON** over a database | Zero infrastructure. `data/` is auto-created on first run. You can open `user_context.json` and see exactly what the agent knows about you. Transparency over scale. | SQLite, Supabase, pgvector |
 | **3-tier memory** over flat history | Keeps costs bounded. Core memory (~3,270 tokens) is always in the prompt. Working memory slides. Archival sits on disk. The agent forgets gracefully instead of hitting context limits. | Full history (expensive), vector search (overkill at personal scale) |
-| **Observation cap at 30** | Keeps the system prompt predictable. FIFO pruning (oldest out) is simple and sufficient. LLM-based relevance pruning is planned for v0.4 but not needed yet. | No cap (prompt grows unbounded), relevance scoring (adds cost per observation) |
+| **Observation cap at 30** | Keeps the system prompt predictable. FIFO pruning (oldest out) is simple and sufficient. | No cap (prompt grows unbounded), relevance scoring (adds cost per observation) |
 | **Tavily** for web search | 1,000 free searches/month, no credit card required, pre-cleaned results (no HTML parsing needed). | SerpAPI (needs credit card), DuckDuckGo (no official API, unreliable), Jina Reader (URL-only) |
 | **Morning briefing on startup** | The agent should be proactive, not just reactive. Showing priorities when you open Dash means you don't have to ask "what's on my plate?" every time. | Cron job (overkill for CLI), in-agent command (muddies the reactive loop) |
 | **Session summaries via Haiku** | One API call at quit (~$0.003). Structured JSON with summary, tasks changed, observations, and mood. Loaded into the next session's system prompt so continuity is automatic. | Manual notes (friction), full log replay (expensive) |
@@ -107,7 +119,7 @@ Every decision here was made deliberately. Full ADRs are in [docs/decisions/](do
 | v0.1 | Raw agentic loop: 6 tools, JSON memory, streaming CLI | Done |
 | v0.2 | Persistent memory: cross-session context, session summaries, pruning | Done |
 | v0.3 | Web search, URL fetching, morning briefing | Done |
-| v0.4 | Personality modeling, priority reasoning, memory search | Planned |
+| v0.4 | Pattern synthesis, memory search, adaptive briefing, eval system | Done |
 | v0.5 | PWA frontend | Planned |
 | v1.0 | Calendar integration, scheduled runs | Planned |
 

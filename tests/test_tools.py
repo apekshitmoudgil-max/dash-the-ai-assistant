@@ -260,7 +260,7 @@ class TestExecuteTool:
     def test_all_tools_in_definitions(self) -> None:
         """Verify every tool in TOOL_DEFINITIONS has a matching handler."""
         tool_names = {str(t["name"]) for t in TOOL_DEFINITIONS}
-        expected = {"add_task", "list_tasks", "update_task", "complete_task", "get_user_context", "update_user_context", "web_search", "web_fetch"}
+        expected = {"add_task", "list_tasks", "update_task", "complete_task", "get_user_context", "update_user_context", "web_search", "web_fetch", "search_memory"}
         assert tool_names == expected
 
     def test_web_search_dispatches(self, data_dir: Path) -> None:

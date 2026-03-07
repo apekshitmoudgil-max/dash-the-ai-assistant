@@ -224,6 +224,17 @@ def _build_dynamic_context() -> str:
     else:
         user_context_str = "No information about the user yet. Pay attention to what they tell you and store observations."
 
+    # Extract inferred patterns for dedicated prompt section
+    patterns = context.get("inferred_patterns", [])
+    if patterns:
+        pattern_lines = [
+            f"- [{p.get('confidence', '?').upper()}] ({p.get('category', '?')}) {p.get('pattern', '')}"
+            for p in patterns
+        ]
+        inferred_patterns_str = "\n".join(pattern_lines)
+    else:
+        inferred_patterns_str = "No patterns inferred yet. These emerge after a few sessions."
+
     tasks = read_tasks()
     active_tasks = [t for t in tasks if t.get("status") == "active"]
     if active_tasks:
@@ -249,6 +260,7 @@ def _build_dynamic_context() -> str:
     return SYSTEM_PROMPT_DYNAMIC_TEMPLATE.format(
         current_datetime=current_datetime,
         user_context=user_context_str,
+        inferred_patterns=inferred_patterns_str,
         active_tasks=active_tasks_str,
         recent_sessions=recent_sessions_str,
     )
@@ -455,7 +467,7 @@ def main() -> None:
     CY = "\033[96m"  # bright cyan (eyes)
     print()
     print(f"  {W}▄█████▄{R}")
-    print(f"  {W}█{GR}█{CY}█{GR}█{CY}█{GR}█{W}█{R}       {B}{M}Dash{R} {D}v0.3{R}")
+    print(f"  {W}█{GR}█{CY}█{GR}█{CY}█{GR}█{W}█{R}       {B}{M}Dash{R} {D}v0.4{R}")
     print(f"  {W}▀▀███▀▀{R}       {D}Haiku 4.5 · CLI{R}")
     print(f"    {W}█ █{R}")
     print()
@@ -468,9 +480,32 @@ def main() -> None:
     tasks = read_tasks()
     user_context = read_user_context()
     session_summaries = load_recent_summaries(n=5)
+
+    active_tasks = [t for t in tasks if t.get("status") == "active"]
+    observations = user_context.get("observations", [])
+    patterns = user_context.get("inferred_patterns", [])
+
+    # Log what was loaded at session start
+    loaded_info = {
+        "active_tasks": len(active_tasks),
+        "observations": len(observations),
+        "inferred_patterns": len(patterns),
+        "recent_sessions": len(session_summaries),
+        "task_titles": [t.get("title", "") for t in active_tasks],
+    }
+    logger._log("session_loaded", loaded_info)
+    logger._convo(
+        f"*Session loaded: {len(active_tasks)} active tasks, "
+        f"{len(observations)} observations, {len(patterns)} patterns, "
+        f"{len(session_summaries)} recent sessions*\n\n"
+    )
+
+    print()
+
     briefing_prompt = build_briefing_prompt(tasks, user_context, session_summaries)
 
     md_renderer = StreamingMarkdownRenderer()
+    briefing_text_parts: list[str] = []
     print(f"{M}{B}Dash:{R} ", end="", flush=True)
 
     try:
@@ -482,6 +517,7 @@ def main() -> None:
             for event in stream:
                 if event.type == "content_block_delta":
                     if event.delta.type == "text_delta":
+                        briefing_text_parts.append(event.delta.text)
                         rendered = md_renderer.feed(event.delta.text)
                         if rendered:
                             print(f"{M}{rendered}{R}", end="", flush=True)
@@ -490,6 +526,11 @@ def main() -> None:
                     if remaining:
                         print(f"{M}{remaining}{R}", end="", flush=True)
         print("\n")
+
+        # Log the briefing to both log files
+        briefing_full_text = "".join(briefing_text_parts)
+        logger._log("morning_briefing", {"content": briefing_full_text})
+        logger._convo(f"**Dash (briefing):** {briefing_full_text}\n\n---\n\n")
     except Exception as e:
         print(f"\n  {D}[Briefing unavailable: {e}]{R}\n")
 
@@ -550,9 +591,43 @@ def main() -> None:
 
             summary = generate_session_summary(logger.convo_file, client)
             save_session_summary(summary)
+
+            # Log to JSONL
+            logger._log("session_summary", summary)
+
+            # Log to markdown
+            logger._convo(f"\n---\n\n**Session summary:**\n")
+            logger._convo(f"- Summary: {summary.get('summary', 'N/A')}\n")
+            logger._convo(f"- Mood: {summary.get('mood', 'N/A')}\n")
+            if summary.get("tasks_changed"):
+                logger._convo(f"- Tasks changed: {', '.join(str(t) for t in summary['tasks_changed'])}\n")
+            if summary.get("observations_added"):
+                logger._convo(f"- Observations added: {', '.join(str(o) for o in summary['observations_added'])}\n")
+
             print("Session summary saved.")
         except Exception as e:
             print(f"[Could not save summary: {e}]")
+
+        print("Synthesizing patterns...")
+        try:
+            from src.pattern_synthesis import synthesize_patterns
+
+            patterns = synthesize_patterns(client)
+
+            # Log to JSONL
+            logger._log("pattern_synthesis", {"patterns": patterns, "count": len(patterns)})
+
+            # Log to markdown
+            logger._convo(f"\n**Patterns updated ({len(patterns)} total):**\n")
+            for p in patterns:
+                conf = p.get("confidence", "?")
+                cat = p.get("category", "?")
+                text = p.get("pattern", "")
+                logger._convo(f"- [{conf.upper()}] ({cat}) {text}\n")
+
+            print(f"Patterns updated ({len(patterns)} patterns).")
+        except Exception as e:
+            print(f"[Pattern synthesis skipped: {e}]")
 
     print(f"\nSession saved:")
     print(f"  Conversation: {logger.convo_file}")

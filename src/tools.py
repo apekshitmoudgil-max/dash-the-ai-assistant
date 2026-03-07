@@ -11,6 +11,7 @@ from src.memory import (
     write_tasks,
     write_user_context,
 )
+from src.search_memory import search_memory
 from src.web_tools import web_fetch, web_search
 
 # ---------------------------------------------------------------------------
@@ -166,6 +167,29 @@ TOOL_DEFINITIONS: list[dict[str, object]] = [
                 },
             },
             "required": ["url"],
+        },
+    },
+    {
+        "name": "search_memory",
+        "description": (
+            "Search your archival memory (past session logs, archived observations, "
+            "old summaries) for information NOT available in the current conversation "
+            "or system prompt. "
+            "ONLY use when: (1) the user explicitly asks about a past session or "
+            "something discussed before, or (2) you need specific historical context "
+            "not in current tasks, user_context, or recent session summaries already "
+            "in your prompt. Do NOT use speculatively or for information already "
+            "visible in your context."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Keywords to search for in past sessions and archived observations",
+                },
+            },
+            "required": ["query"],
         },
     },
 ]
@@ -344,6 +368,7 @@ _TOOL_MAP: dict[str, object] = {
     "update_user_context": _update_user_context,
     "web_search": web_search,
     "web_fetch": web_fetch,
+    "search_memory": search_memory,
 }
 
 

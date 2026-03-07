@@ -4,7 +4,7 @@
 
 Dash is a CLI-based agentic personal assistant. The user interacts via terminal. The agent uses Claude Haiku 4.5 with tool use to reason about tasks, user context, and priorities. Dash remembers across sessions and manages its own memory.
 
-## Architecture Diagram (v0.3)
+## Architecture Diagram (v0.4)
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -38,13 +38,13 @@ Dash is a CLI-based agentic personal assistant. The user interacts via terminal.
          │                    │
          ▼                    ▼
 ┌─────────────────┐  ┌──────────────────────────────┐
-│  Claude Haiku    │  │          Tools (8)             │
+│  Claude Haiku    │  │          Tools (9)             │
 │  4.5 API         │  │                                │
 │  (Anthropic)     │  │  add_task        complete_task  │
 │                  │  │  list_tasks      get_user_ctx   │
 │  - streaming     │  │  update_task     update_user_ctx│
 │  - tool use      │  │  web_search      web_fetch      │
-│  - multi-turn    │  │                                │
+│  - multi-turn    │  │  search_memory                  │
 │                  │  │  update_user_ctx triggers       │
 │                  │  │  observation pruning (max 30)   │
 └─────────────────┘  └──────────┬───────────────────────┘
@@ -106,7 +106,7 @@ The main REPL. Reads user input, builds the messages array with system prompt an
 - Session summary: generated at quit, saved for next session
 
 ### 2. Tools (`src/tools.py`)
-Eight tools:
+Nine tools:
 
 | Tool | Input | Output | Side Effects |
 |------|-------|--------|-------------|
@@ -118,6 +118,7 @@ Eight tools:
 | `update_user_context` | `{key, value, reason}` | Confirmation | Writes to user_context.json + triggers pruning |
 | `web_search` | `{query, num_results?}` | Search results (title, URL, snippet) | None (read-only, calls Tavily API) |
 | `web_fetch` | `{url}` | Extracted page content (text) | None (read-only, calls URL via requests) |
+| `search_memory` | `{query}` | Matching results from session logs, archived observations, summaries | None (read-only) |
 
 ### 3. Memory (`src/memory.py`)
 JSON file read/write + observation pruning.
@@ -248,12 +249,21 @@ The system prompt is assembled every turn from a template + 3 injected sections:
 - 92 tests (69 v0.2 + 23 v0.3)
 - Key learning: separate entry points keep the agent loop clean
 
+### v0.4 -- Pattern Synthesis + Memory Search + Eval System
+- 1 new tool: search_memory (hybrid exact + fuzzy keyword search over archival memory)
+- Pattern synthesis at session end: infers behavioral patterns (work habits, energy, motivation), stores in user_context.json
+- Adaptive morning briefing: emotional continuity from last session, patterns shape tone and recommendations, time-aware
+- Prompt engineering: explicit proactive storage rules, list_tasks-first enforcement for priority questions
+- Multi-turn eval system: runs golden sessions against real Haiku, scores tool accuracy, generates markdown reports
+- 144 tests (92 v0.3 + 52 v0.4)
+- Key learning: LLMs need explicit examples in prompts for proactive behavior, not just general instructions
+
 ## Roadmap
 | Version | Focus | New Capabilities |
 |---------|-------|-------------------|
 | ~~v0.1~~ | ~~Raw agentic loop~~ | ~~6 tools, JSON memory, CLI~~ |
 | ~~v0.2~~ | ~~Persistent memory~~ | ~~Cross-session context, session summaries, pruning~~ |
 | ~~v0.3~~ | ~~Web search + proactive~~ | ~~web_search, web_fetch, morning briefing~~ |
-| v0.4 | search_memory + personality | Archival memory search, inferred preferences |
+| ~~v0.4~~ | ~~Pattern synthesis + eval~~ | ~~search_memory, pattern inference, eval runner~~ |
 | v0.5 | PWA frontend | Next.js UI, Supabase migration |
 | v1.0 | Calendar + autonomy | Google Calendar, scheduled agent runs |

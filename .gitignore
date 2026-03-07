@@ -44,3 +44,19 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Eval (personal test data and results -- create your own eval_sessions.json)
+tests/eval_sessions.json
+tests/eval_results/
+
+# Benchmarks (personal)
+benchmark.py
+benchmark_*.json
+
+# Project docs (not part of the public template)
+docs/STATUS.md
+docs/sessions/
+docs/plans/
+docs/discovery/
+docs/decisions/
+docs/v01-learnings-and-roadmap.md
