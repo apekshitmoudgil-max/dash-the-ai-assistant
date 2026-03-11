@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
-import readline  # noqa: F401 -- extends input() buffer and adds line editing
+try:
+    import readline  # noqa: F401 -- extends input() buffer and adds line editing
+except ImportError:
+    pass  # readline is Unix-only; input() still works without it on Windows
 import sys
 import time
 import warnings

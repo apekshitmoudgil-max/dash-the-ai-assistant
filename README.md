@@ -55,6 +55,8 @@ Why this model? Inspired by [Letta's architecture](https://docs.letta.com/). The
 # 1. Clone and install
 git clone https://github.com/apekshitmoudgil-max/dash-the-ai-assistant.git
 cd dash-the-ai-assistant
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 2. Add your API keys
